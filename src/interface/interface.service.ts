@@ -11,6 +11,21 @@ export class InterfaceService {
         this.networkRef = db.collection('network')
     }
 
+    dynamicSort(property) {
+        var sortOrder = 1;
+        if(property[0] === "-") {
+            sortOrder = -1;
+            property = property.substr(1);
+        }
+        return function (a,b) {
+            /* next line works with strings and numbers, 
+             * and you may want to customize it to your needs
+             */
+            var result = (a[property] < b[property]) ? -1 : (a[property] > b[property]) ? 1 : 0;
+            return result * sortOrder;
+        }
+    }
+    
     async getAllInterface(deviceName: string): Promise<InterfaceInterface[]> {
         const interfaceValue = []
         const allInterfaces = await this.networkRef
@@ -19,8 +34,17 @@ export class InterfaceService {
             .get()
         allInterfaces.forEach(eachInterface => {
             const name = eachInterface.id.replace(/-/g, '/')
-            interfaceValue.push({ interface: name, ...eachInterface.data() })
+            var numberPattern = /\d+/g;
+            let numberName = name.match( numberPattern ).join('')
+            // const numberName2 = numberName.split(',')
+            if (numberName.length == 2 && name.indexOf('GigabitEthernet') != -1) {
+                numberName = '0'+numberName
+            } else {
+                numberName = '9999'
+            }
+            interfaceValue.push({ numberName: numberName, interface: name, ...eachInterface.data() })
         })
+        interfaceValue.sort(this.dynamicSort("numberName"));
 
         return interfaceValue
     }
